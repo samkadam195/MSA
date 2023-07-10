@@ -1,0 +1,26 @@
+docker – version
+
+docker pull hello-world 
+
+docker image
+
+
+docker login
+Username: 8308639375
+password:
+docker pull hello-world
+docker image ls
+docker tag (image id) 8308639375/repo1:firsttry
+docker push 8308639375/repo1:firsttry
+
+
+cat > Dockerfile << EOF
+FROM busybox
+CMD echo “Hello World! This is my first docker image.”
+EOF
+
+Docker push 8308639375/repo2:secondtry
+Docker build -t 8308639375/repo2 .
+Docker images
+Docker push 8308639375/repo2
+Docker run 8308639375/repo2

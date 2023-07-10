@@ -1,0 +1,496 @@
+Create folder Team service
+
+dotnet new webapi -o TeamService
+
+##Remove existing weatherforecast files both Teamservice and controllers folder.
+
+###Create Member.cs in Models folder
+using System; 
+namespace TeamService.Models 
+{ 
+	public class Member 
+	{ 
+ 		public Guid ID { get; set; }= default!;
+ 		public string FirstName { get; set; }= default!; 
+ 		public string LastName { get; set; }= default!; 
+ 		public Member() { } 
+ 		public Member(Guid id) : this() 
+ 		{ 
+ 			this.ID = id; 
+		} 
+ 		public Member(string firstName, string lastName, Guid id) : this(id) 
+ 		{ 
+ 			this.FirstName = firstName; 
+ 			this.LastName = lastName; 
+ 		} 
+		public override string ToString() 
+		{ 
+ 			return this.LastName; 
+ 		} 
+ 	} 
+}
+
+###Create a class file named “Team.cs” in the Models folder
+using System; 
+using System.Collections.Generic; 
+namespace TeamService.Models 
+{ 
+	public class Team 
+ 	{ 
+ 		public string Name { get; set; }= default!;  
+ 		public Guid ID { get; set; }= default!;  
+ 		public ICollection<Member> Members { get; set; }= default!;  
+ 		public Team() 
+ 		{ 
+ 			this.Members = new List<Member>(); 
+ 		} 
+ 		public Team(string name) : this() 
+ 		{ 
+ 			this.Name = name; 
+ 		} 
+		public Team(string name, Guid id) : this(name) 
+ 		{ 
+ 			this.ID = id; 
+ 		} 
+ 		public override string ToString() 
+		{ 
+ 			return this.Name; 
+ 		} 
+ 	} 
+}
+
+####Create a class file named “MembersController.cs” in the Controllers folder 
+
+using System;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Linq;
+using TeamService.Models;
+using System.Threading.Tasks;
+using TeamService.Persistence;
+
+namespace TeamService
+{
+	[Route("/teams/{teamId}/[controller]")]
+	public class MembersController : Controller
+	{
+		ITeamRepository repository;
+
+		public MembersController(ITeamRepository repo) 
+		{
+			repository = repo;
+		}
+
+		[HttpGet]
+		public virtual IActionResult GetMembers(Guid teamID) 
+		{
+			Team team = repository.Get(teamID);
+			
+			if(team == null) {
+				return this.NotFound();
+			} else {
+				return this.Ok(team.Members);
+			}			
+		}
+		
+
+		[HttpGet]
+		[Route("/teams/{teamId}/[controller]/{memberId}")]		
+		public virtual IActionResult GetMember(Guid teamID, Guid memberId) 
+		{
+			Team team = repository.Get(teamID);
+			
+			if(team == null) {
+				return this.NotFound();
+			} else {
+				var q = team.Members.Where(m => m.ID == memberId);
+
+				if(q.Count() < 1) {
+					return this.NotFound();
+				} else {
+					return this.Ok(q.First());
+				}				
+			}			
+		}
+
+		[HttpPut]
+		[Route("/teams/{teamId}/[controller]/{memberId}")]		
+		public virtual IActionResult UpdateMember([FromBody]Member updatedMember, Guid teamID, Guid memberId) 
+		{
+			Team team = repository.Get(teamID);
+			
+			if(team == null) {
+				return this.NotFound();
+			} else {
+				var q = team.Members.Where(m => m.ID == memberId);
+
+				if(q.Count() < 1) {
+					return this.NotFound();
+				} else {
+					team.Members.Remove(q.First());
+					team.Members.Add(updatedMember);
+					return this.Ok();
+				}
+			}			
+		}
+
+		[HttpPost]
+		public virtual IActionResult CreateMember([FromBody]Member newMember, Guid teamID) 
+		{
+			Team team = repository.Get(teamID);
+			
+			if(team == null) {
+				return this.NotFound();
+			} else {
+				team.Members.Add(newMember);
+				var teamMember = new {TeamID = team.ID, MemberID = newMember.ID};
+				return this.Created($"/teams/{teamMember.TeamID}/[controller]/{teamMember.MemberID}", teamMember);
+			}
+		}
+
+		[HttpGet]
+		[Route("/members/{memberId}/team")]
+		public IActionResult GetTeamForMember(Guid memberId)
+		{
+			var teamId = GetTeamIdForMember(memberId);
+			if (teamId != Guid.Empty) {
+				return this.Ok(new {
+					TeamID = teamId
+				});
+			} else {
+				return this.NotFound();
+			}
+		}
+
+		private Guid GetTeamIdForMember(Guid memberId) 
+		{
+			foreach (var team in repository.List()) {
+				var member = team.Members.FirstOrDefault( m => m.ID == memberId);
+				if (member != null) {
+					return team.ID;
+				}
+			}
+			return Guid.Empty;
+		}    
+    }
+}
+
+####Create a class file named “TeamsController.cs” in the Controllers folder 
+using System;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Linq;
+using TeamService.Models;
+using System.Threading.Tasks;
+using TeamService.Persistence;
+
+namespace TeamService
+{
+	[Route("[controller]")]
+	public class TeamsController : Controller
+	{
+		ITeamRepository repository;
+
+		public TeamsController(ITeamRepository repo) 
+		{
+			repository = repo;
+		}
+
+		[HttpGet]
+        public virtual IActionResult GetAllTeams()
+		{
+			return this.Ok(repository.List());
+		}
+
+		[HttpGet("{id}")]
+        public IActionResult GetTeam(Guid id)
+		{
+			Team team = repository.Get(id);		
+
+			if (team != null) // I HATE NULLS, MUST FIXERATE THIS.			  
+			{				
+				return this.Ok(team);
+			} else {
+				return this.NotFound();
+			}			
+		}		
+
+		[HttpPost]
+		public virtual IActionResult CreateTeam([FromBody]Team newTeam) 
+		{
+			repository.Add(newTeam);			
+
+			//TODO: add test that asserts result is a 201 pointing to URL of the created team.
+			//TODO: teams need IDs
+			//TODO: return created at route to point to team details			
+			return this.Created($"/teams/{newTeam.ID}", newTeam);
+		}
+
+		[HttpPut("{id}")]
+		public virtual IActionResult UpdateTeam([FromBody]Team team, Guid id) 
+		{
+			team.ID = id;
+						
+			if(repository.Update(team) == null) {
+				return this.NotFound();
+			} else {
+				return this.Ok(team);
+			}
+		}
+
+		[HttpDelete("{id}")]
+        public virtual IActionResult DeleteTeam(Guid id)
+		{
+			Team team = repository.Delete(id);
+
+			if (team == null) {
+				return this.NotFound();
+			} else {				
+				return this.Ok(team.ID);
+			}
+		}
+	}
+}
+
+####Create a folder named Persistence in the teamservice folder 
+###Create a class file named “ITeamRepository.cs” in the Persistence folder 
+
+using System;
+using System.Collections.Generic;
+using TeamService.Models;
+
+namespace TeamService.Persistence
+{
+	public interface ITeamRepository {
+	    IEnumerable<Team> List();
+		Team Get(Guid id);
+		Team Add(Team team);
+		Team Update(Team team);		
+		Team Delete(Guid id);
+	}
+}
+
+####Create a class file named “MemoryTeamRepository.cs” in the Persistence folder:
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using TeamService;
+using TeamService.Models;
+
+namespace TeamService.Persistence
+{
+	public class MemoryTeamRepository :  ITeamRepository {
+		protected static ICollection<Team> teams;
+
+		public MemoryTeamRepository() {
+			if(teams == null) {
+				teams = new List<Team>();
+			}
+		}
+
+		public MemoryTeamRepository(ICollection<Team> teams) {
+            MemoryTeamRepository.teams = teams;
+		}
+
+		public IEnumerable<Team> List() {
+			return teams; 
+		}
+
+		public Team Get(Guid id) {
+			return teams.FirstOrDefault(t => t.ID == id);			
+		}
+
+		public Team Update(Team t) 
+		{
+			Team team = this.Delete(t.ID);
+	
+			if(team != null) {
+				team = this.Add(t);
+			}
+
+			return team;
+		}
+
+		public Team Add(Team team) 
+		{
+			teams.Add(team);
+			return team;
+		}
+
+		public Team Delete(Guid id) {	
+			var q = teams.Where(t => t.ID == id);
+			Team team = null;
+
+			if (q.Count() > 0) {				
+				team = q.First();
+				teams.Remove(team);
+			}							
+
+			return team; 			
+		}
+	}
+}
+
+####Create a class file named “Startup.cs” in the TeamService folder
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using TeamService.Persistence;
+namespace TeamService
+{
+    public class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
+
+        public IConfiguration Configuration { get; }
+
+        // This method gets called by the runtime. Use this method to add services to the container.
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddControllers();
+            services.AddScoped<ITeamRepository, MemoryTeamRepository>();
+        }
+
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
+            app.UseHttpsRedirection();
+
+            app.UseRouting();
+
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+        }
+    }
+}
+
+
+
+
+
+
+
+
+####Replace the code in ‘TeamService.csproj’ 
+
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference 
+            Include="Swashbuckle.AspNetCore" Version="5.6.3"/>
+  </ItemGroup>
+</Project>
+
+
+####Replace the code in ‘Program.cs’ file
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace TeamService
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            CreateHostBuilder(args).Build().Run();
+        }
+
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
+    }
+}
+
+
+
+
+
+####Run the application in command prompt using ‘dotnet run’. Note down the URL. Open one more command prompt window.
+ 
+curl --insecure https://localhost:5001/teams 
+
+
+curl --insecure -H "Content-Type:application/json" -X POST -d "{\"id\":\"e52baa63-d511-417e-9e54-7aab04286281\", \"name\":\"KC\"}" https://localhost:5001/teams
+ 
+
+
+curl --insecure -H "Content-Type:application/json" -X POST -d "{\"id\":\"e12baa63-d511-417e-9e54-7aab04286281\", \"name\":\"MSC Part1\"}" https://localhost:5001/teams
+ 
+
+curl --insecure https://localhost:5001/teams
+ 
+
+
+curl --insecure https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281
+ 
+
+
+curl --insecure -H "Content-Type:application/json" -X PUT -d "{\"id\":\"e52baa63-d511-417e-9e54-7aab04286281\", \"name\":\"KC IT DEPT\"}" https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281
+ 
+
+curl --insecure -H "Content-Type:application/json" -X DELETE https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281
+ 
+
+ 
+curl --insecure https://localhost:5001/teams
+ 
+
+
+####Working with Member API of TeamService
+####Run the application in command prompt using ‘dotnet run’. Note down the URL. Open one more command prompt window. Enter the following commands: 
+
+curl --insecure -H "Content-Type:application/json" -X POST -d "{\"id\":\"e52baa63-d511-417e-9e54-7aab04286281\", \"name\":\"KC\"}" https://localhost:5001/teams 
+
+
+curl --insecure -H “Content-Type:application/json” –X POST –d “{\"id\":\"63e7acf8-8fae-42ce-9349-3c8593ac8292\", \"firstName\":\"Joel\", \"lastName\":\"Dmello\"}” https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281/members
+ 
+
+curl --insecure https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281
+ 
+
+curl --insecure https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281/members/63e7acf8-8fae-42ce-9349-3c8593ac8292
+ 
+
+curl --insecure https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281/members
+ 
+
+curl --insecure -H "Content-Type:application/json" -X DELETE https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281
+ 
+
+curl --insecure https://localhost:5001/teams/e52baa63-d511-417e-9e54-7aab04286281/members

@@ -1,0 +1,22 @@
+wsl –l –o
+
+wsl --install d Ubuntu-22.04
+
+wsl –l –v
+ 
+docker run –p 8080:8080 dotnetcoreservices/hello-world
+
+http://127.0.0.1:8080
+
+#####Open new command prompt.
+curl http://localhost:8080/will/it/blend?
+ 
+docker ps
+ 
+docker kill 9777ee9809db
+ 
+
+
+
+
+

@@ -1,0 +1,73 @@
+dotnet new console -o App -n DotNet.Docker
+ 
+cd App
+dotnet run
+
+
+####Open the Program.cs file in a text editor.
+
+var counter = 0;
+var max = args.Length is not 0 ? Convert.ToInt32(args[0]) : -1;
+while (max is -1 || counter < max)
+{
+    Console.WriteLine($"Counter: {++counter}");
+    await Task.Delay(TimeSpan.FromMilliseconds(1_000));
+}
+
+
+
+dotnet run
+ 
+dotnet publish -c Release
+ 
+
+####Create a file named Dockerfile.csproj and open it in a text editor ####without extension. Add the following in the dockerfile
+
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build-env
+WORKDIR /App
+
+COPY . ./
+RUN dotnet restore
+RUN dotnet publish -c Release -o out
+
+FROM mcr.microsoft.com/dotnet/aspnet:7.0
+WORKDIR /App
+COPY --from=build-env /App/out .
+ENTRYPOINT ["dotnet", "DotNet.Docker.dll"]
+
+docker build -t counter-image -f Dockerfile .
+ 
+
+docker images
+ 
+docker create --name core-counter counter-image
+
+docker ps –a
+
+docker start corecounter
+ 
+docker ps
+
+docker stop corecounter
+
+docker ps
+ 
+docker start core-counter
+
+docker attach --sig-proxy=false corecounter
+ 
+docker stop core-counter
+ 
+docker ps –a
+ 
+docker rm core-counter
+ 
+docker ps –a
+ 
+docker run -it --rm counter-image
+ 
+docker run -it --rm counter-image 3
+ 
+docker ps –a
+ 
+

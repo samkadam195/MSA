@@ -1,0 +1,170 @@
+####Aim: Create a MVC Project in ASP.net core
+
+
+### Create a mvc auth name
+## Create folder
+dotnet new mvc
+ 
+#### Restore, build and run the program.
+
+
+###Go to Model Folder and Create StockQuote.cs file in it.
+
+using System;
+namespace prac4.Models
+{
+	public class StockQuote
+	{
+   	 public string Symbol {get;set; }= default!;
+
+   	 public int Price{get;set;}= default!;
+	}
+}
+
+
+
+####go to view folder and them in home folder. Edit index.cshtml file
+
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    	symbol; @Model.Symbol<br/>
+	Price: $@Model.Price<br/>
+</div>
+
+
+
+
+####Now go to controller folder and edit HomeController.cs
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using prac4.Models;
+
+namespace prac4.Controllers;
+
+public class HomeController : Controller
+{
+    public async Task <IActionResult>Index()
+	{
+		var model = new StockQuote{ Symbol ="Nike", Price=3200};
+		return View(model);
+	}
+}
+
+
+
+
+
+####Restore and run the program.
+ 
+
+
+####Create a new file in Controller is ApiController.cs
+using Microsoft.AspNetCore.Mvc; 
+using trial.Models; 
+namespace trial.Controllers
+{ 
+[Route("api/test")] 
+public class ApiController : Controller 
+{ 
+[HttpGet] public IActionResult GetTest() 
+{ 
+return this.Ok(new StockQuote 
+{ 
+Symbol = "API", 
+Price = 9999 
+}); 
+}
+ } 
+}
+
+
+If you run the application again right now, then you can hit http://localhost:5000/api/test with your favorite browser and you’ll see a JSON payload (with lowercased property names by default) that looks like this: 
+{
+ 	"symbol" : "API",
+ "price" : 9999 
+}
+
+
+
+
+####Create a new file in Views/Home/Index.cshtml
+<html> 
+
+<head> 
+
+<title>Hello world</title> 
+ <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+<!--<script 
+
+src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"> </script>
+<script src="/wwwroot/Scripts/hello.js"></script>-->
+
+</head> 
+
+<body> 
+
+<h1>Hello World</h1> 
+
+<div> 
+
+<h2>Stock Quote</h2> 
+
+<div> 
+
+Symbol: @Model.Symbol<br/> 
+
+Price: $@Model.Price<br/> 
+
+</div> 
+
+</div> 
+
+<br/> 
+
+<div> 
+
+<p class="quote-symbol">The Symbol is </p> 
+
+<p class="quote-price">The price is $</p> 
+
+</div> 
+<script>
+         $(document).ready(function () {
+      $.ajax({
+        url: "/api/test"
+      }).then(function (data) {
+        $('.quote-symbol').append(data.symbol);
+        $('.quote-price').append(data.price);
+      });
+    });
+
+    </script>
+
+</body> 
+
+</html>
+
+
+
+
+####wwwroot/js/hello.js
+$(document).ready(function () {
+	$.ajax({
+		url: "/api/test"
+	}).then(function (data) {
+		$('.quote-symbol').append(data.symbol);
+		$('.quote-price').append(data.price);
+	});
+});
+
+

@@ -1,0 +1,63 @@
+Dotnet				
+dotnet –version			
+F:				
+mkdir MSA_Prac			
+cd MSA_Prac			
+mkdir prac_1			
+cd prac_1			
+mkdir HelloWorld		
+cd HelloWorld			
+dotnet new console
+dotnet restore			
+dotnet run	
+
+#######Adding the ASP.NET Packages to the project
+dotnet add package Microsoft.AspNetCore.Mvc -v1.1.1
+dotnet add package Microsoft.AspNetCore.Server.Kestrel
+dotnet add package Microsoft.Extensions.Logging
+dotnet add package Microsoft.Extensions.Logging.Console
+dotnet add package Microsoft.Extensions.Logging.Debug
+dotnet add package Microsoft.Extensions.Configuration.CommandLine
+
+
+########Add the following code in program.cs  file
+
+using System;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+
+namespace HelloWorld
+{
+	internal class Program
+	{
+		static void Main(string[] args)
+		{
+			var config = new ConfigurationBuilder()
+					.AddCommandLine(args)
+					.Build();
+			var host = new WebHostBuilder()
+					.UseKestrel()
+					.UseStartup<Startup>()
+					.UseConfiguration(config)
+					.Build();
+			host.Run();
+		}
+	}
+	public class Startup
+	{
+		public Startup(IHostingEnvironment env){ }
+		public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFctory)
+		{
+			app.Run(async(context)=>{await context.Response.WriteAsync("Hello,World");});
+		}
+	}
+}
+
+
+
+dotnet restore
+dotnet run
+
